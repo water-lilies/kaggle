@@ -39,20 +39,30 @@ def validate_model(model, data):
 
 # train, test datasets 변환
 def transform_dataset(train, test, func, func_params = {}):
-    dataset = pd.concat([train, test], ignore_index = True)
+    """
+    tranfrom dataset
+    :param train: pd.DataFrame
+    :param test:
+    :param func: ojbject
+    :param func_params: dict
+    :return: tuple
+    """
+    dataset = pd.concat([train, test], ignore_index=True)
     dataset = func(dataset, **func_params)
     if isinstance(dataset, pd.DataFrame):
-        new_train = dataset.iloc[:train.shape[0],:].reset_index(drop = True)
-        new_test =  dataset.iloc[train.shape[0]:,:].reset_index(drop = True)
+        new_train = dataset.iloc[:train.shape[0], :].reset_index(drop=True)
+        new_test = dataset.iloc[train.shape[0]:, :].reset_index(drop=True)
     else:
         new_train = dataset[:train.shape[0]]
-        new_test =  dataset[train.shape[0]:]
+        new_test = dataset[train.shape[0]:]
+
     return new_train, new_test
 
 
 # --------------- Labal Encoding ---------------
 # 데이터셋 각 열에대해 임의의 정수로 N개 열 생성
 MJTCP = 32292 # Michael Jordan total career points
+
 
 def assign_rnd_integer(dataset, number_of_times = 5, seed = MJTCP):
     new_dataset = pd.DataFrame()
@@ -65,9 +75,10 @@ def assign_rnd_integer(dataset, number_of_times = 5, seed = MJTCP):
             np.random.shuffle(labels)
             mapping = pd.DataFrame({c: unique_vals, col_name: labels})
             new_dataset[col_name] = (dataset[[c]]
-                                     .merge(mapping, on = c, how = 'left')[col_name]
+                                     .merge(mapping, on=c, how='left')[col_name]
                                     ).values
         return new_dataset
+
 
 new_train, new_test = transform_dataset(
     train[col4train], test[col4train],
@@ -78,27 +89,24 @@ new_train, new_test = transform_dataset(
 #new_train.head()
 
 
-validate_model(
-    model = get_model(),
-    data = [new_train.values, y]
-)
+validate_model(model=get_model(),
+               data=[new_train.values, y])
 
 new_train, new_test = transform_dataset(
     train[col4train], test[col4train],
-    assign_rnd_integer, {"number_of_times":1}
-)
+    assign_rnd_integer, {"number_of_times": 1})
 
 # print(new_train.shape, new_test.shape)
 validate_model(
-    model = get_model(),
-    data = [new_train.values, y]
-)
+    model=get_model(),
+    data=[new_train.values, y])
 
 
 # --------------- One-hot encoding ---------------
 from sklearn.preprocessing import OneHotEncoder
 
-def one_hot(dataset):
+
+def one_hot(dataset: pd.DataFrame):
     ohe = OneHotEncoder(sparse=True, dtype=np.float32, handle_unknown='ignore')
     return ohe.fit_transform(dataset.values)
 
@@ -149,10 +157,9 @@ def get_col_interactions_svd(dataset, tfidf=True):
     return new_dataset
 
 
-new_train, new_test = transform_dataset(
-    train[col4train], test[col4train],
-    get_col_interactions_svd
-)
+new_train, new_test = transform_dataset(train[col4train],
+                                        test[col4train],
+                                        get_col_interactions_svd)
 
 #print(new_train.shape, new_test.shape)
 #new_train.head(5)
@@ -208,7 +215,6 @@ validate_model(
     model = get_model(),
     data = [new_train.values, y]
 )
-
 
 
 model = get_model()
