@@ -1,29 +1,35 @@
+# python default library
+import itertools
+
+# Data Handline library
 import numpy as np
 import pandas as pd
-
-
-train = pd.read_csv('../data/amazon-employee-access-challenge/train.csv')
-test = pd.read_csv('../data/amazon-employee-access-challenge/test.csv')
-
-
-target = "ACTION"
-col4train = [x for x in train.columns if x not in [target, "ROLE_TITTLE"]]
-y = train[target].values
-
 
 # --------------- helper functions ---------------
 from sklearn.ensemble import ExtraTreesClassifier
 from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_validate
+from sklearn.preprocessing import OneHotEncoder
+# --------------- SVD Encoding ---------------
+from sklearn.decomposition import TruncatedSVD
+from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
+
+
+# -----------------------
+# Define Functions
+# -----------------------
+# 데이터셋 각 열에대해 임의의 정수로 N개 열 생성
+MJTCP = 32292   # Michael Jordan total career points
 
 # return model instance
 def get_model():
     params = {
-        "n_estimators":300,
-        "n_jobs":3,
-        "random_state":5436,
+        "n_estimators": 300,
+        "n_jobs": 3,
+        "random_state": 5436,
     }
     return ExtraTreesClassifier(**params)
+
 
 # validation model
 def validate_model(model, data):
@@ -38,12 +44,12 @@ def validate_model(model, data):
 
 
 # train, test datasets 변환
-def transform_dataset(train, test, func, func_params = {}):
+def transform_dataset(train, test, func, func_params={}):
     """
     tranfrom dataset
     :param train: pd.DataFrame
     :param test:
-    :param func: ojbject
+    :param func: object
     :param func_params: dict
     :return: tuple
     """
@@ -59,12 +65,7 @@ def transform_dataset(train, test, func, func_params = {}):
     return new_train, new_test
 
 
-# --------------- Labal Encoding ---------------
-# 데이터셋 각 열에대해 임의의 정수로 N개 열 생성
-MJTCP = 32292 # Michael Jordan total career points
-
-
-def assign_rnd_integer(dataset, number_of_times = 5, seed = MJTCP):
+def assign_rnd_integer(dataset, number_of_times=5, seed=MJTCP):
     new_dataset = pd.DataFrame()
     np.random.seed(seed)
     for c in dataset.columns:
@@ -77,55 +78,13 @@ def assign_rnd_integer(dataset, number_of_times = 5, seed = MJTCP):
             new_dataset[col_name] = (dataset[[c]]
                                      .merge(mapping, on=c, how='left')[col_name]
                                     ).values
+
         return new_dataset
 
-
-new_train, new_test = transform_dataset(
-    train[col4train], test[col4train],
-    assign_rnd_integer, {"number_of_times":5}
-)
-
-#print(new_train.shape, new_test.shape)
-#new_train.head()
-
-
-validate_model(model=get_model(),
-               data=[new_train.values, y])
-
-new_train, new_test = transform_dataset(
-    train[col4train], test[col4train],
-    assign_rnd_integer, {"number_of_times": 1})
-
-# print(new_train.shape, new_test.shape)
-validate_model(
-    model=get_model(),
-    data=[new_train.values, y])
-
-
 # --------------- One-hot encoding ---------------
-from sklearn.preprocessing import OneHotEncoder
-
-
 def one_hot(dataset: pd.DataFrame):
     ohe = OneHotEncoder(sparse=True, dtype=np.float32, handle_unknown='ignore')
     return ohe.fit_transform(dataset.values)
-
-
-new_train, new_test = transform_dataset(
-    train[col4train], test[col4train], one_hot)
-#print(new_train.shape, new_test.shape)
-
-
-#Warning!!! Long run, better skip it.
-# validate_model(
-#     model = get_model(),
-#     data = [new_train, y]
-# )
-
-
-# --------------- SVD Encoding ---------------
-from sklearn.decomposition import TruncatedSVD
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 
 
 def extract_col_interaction(dataset, col1, col2, tfidf=True):
@@ -142,10 +101,8 @@ def extract_col_interaction(dataset, col1, col2, tfidf=True):
     result = pd.DataFrame()
     result[col1] = data.index.values
     result[col1 + "_{}_svd".format(col2)] = data_X.ravel()
+
     return result
-
-
-import itertools
 
 
 def get_col_interactions_svd(dataset, tfidf=True):
@@ -154,21 +111,8 @@ def get_col_interactions_svd(dataset, tfidf=True):
         data = extract_col_interaction(dataset, col1, col2, tfidf)
         col_name = [x for x in data.columns if "svd" in x][0]
         new_dataset[col_name] = dataset[[col1]].merge(data, on=col1, how='left')[col_name]
+
     return new_dataset
-
-
-new_train, new_test = transform_dataset(train[col4train],
-                                        test[col4train],
-                                        get_col_interactions_svd)
-
-#print(new_train.shape, new_test.shape)
-#new_train.head(5)
-
-
-validate_model(
-    model = get_model(),
-    data = [new_train.values, y]
-)
 
 
 # --------------- Frequency encoding ---------------
@@ -177,21 +121,62 @@ def get_freq_encoding(dataset):
     for c in dataset.columns:
         data = dataset.groupby([c]).size().reset_index()
         new_dataset[c+"_freq"] = dataset[[c]].merge(data, on = c, how = 'left')[0]
+
     return new_dataset
+
+# ------------------
+# 1. load dataset
+# ------------------
+train = pd.read_csv('../data/amazon-employee-access-challenge/train.csv')
+test = pd.read_csv('../data/amazon-employee-access-challenge/test.csv')
+
+target = "ACTION"
+col4train = [x for x in train.columns if x not in [target, "ROLE_TITTLE"]]
+y = train[target].values
+
+
+# --------------- Labal Encoding ---------------
+new_train, new_test = transform_dataset(
+    train[col4train], test[col4train],
+    assign_rnd_integer, {"number_of_times": 5})
+
+
+validate_model(model=get_model(),
+               data=[new_train.values, y])
 
 new_train, new_test = transform_dataset(
     train[col4train], test[col4train],
-    get_freq_encoding
-)
+    assign_rnd_integer, {"number_of_times": 1})
 
-#print(new_train.shape, new_test.shape)
-#new_train.head(5)
+# print(new_train.shape, new_test.shape)
+validate_model(model=get_model(), data=[new_train.values, y])
 
 
-validate_model(
-    model = get_model(),
-    data = [new_train.values, y]
-)
+new_train, new_test = transform_dataset(train[col4train], test[col4train], one_hot)
+# print(new_train.shape, new_test.shape)
+
+
+# Warning!!! Long run, better skip it.
+# validate_model(
+#     model = get_model(),
+#     data = [new_train, y]
+# )
+
+new_train, new_test = transform_dataset(train[col4train], test[col4train], get_col_interactions_svd)
+
+# print(new_train.shape, new_test.shape)
+# new_train.head(5)
+
+validate_model(model=get_model(), data=[new_train.values, y])
+
+
+new_train, new_test = transform_dataset(train[col4train], test[col4train], get_freq_encoding)
+
+# print(new_train.shape, new_test.shape)
+# new_train.head(5)
+
+
+validate_model(model=get_model(), data=[new_train.values, y])
 
 
 # 변환값 결합
@@ -206,17 +191,14 @@ new_train3, new_test3 = transform_dataset(
     assign_rnd_integer, {"number_of_times":10}
 )
 
-new_train = pd.concat([new_train1, new_train2, new_train3], axis = 1)
-new_test = pd.concat([new_test1, new_test2, new_test3], axis = 1)
-#print(new_train.shape, new_test.shape)
+new_train = pd.concat([new_train1, new_train2, new_train3], axis=1)
+new_test = pd.concat([new_test1, new_test2, new_test3], axis=1)
+# print(new_train.shape, new_test.shape)
 
 
-validate_model(
-    model = get_model(),
-    data = [new_train.values, y]
-)
+validate_model(model=get_model(), data=[new_train.values, y])
 
-
+# Save best result
 model = get_model()
 model.fit(new_train.values, y)
 predictions = model.predict_proba(new_test)[:,1]
@@ -225,4 +207,4 @@ submit = pd.DataFrame()
 submit["Id"] = test["id"]
 submit["ACTION"] = predictions
 
-#submit.to_csv("data/submission2.csv", index = False)
+# submit.to_csv("data/submission2.csv", index = False)
