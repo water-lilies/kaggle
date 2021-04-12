@@ -48,7 +48,7 @@ class TargetEncoding(BaseEstimator, TransformerMixin):
             transformed_X = transformed_X.fillna(self.dataset_mean)
             return transformed_X
 
-    def fit_transform(self, X, y, **fit_params):
+    def fit_transform(self, X, y=None, **fit_params):
         self.fit(X, y)
         return self.transform(X)
 

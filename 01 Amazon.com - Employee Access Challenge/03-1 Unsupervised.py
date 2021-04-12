@@ -151,17 +151,15 @@ new_train, new_test = transform_dataset(
 # print(new_train.shape, new_test.shape)
 validate_model(model=get_model(), data=[new_train.values, y])
 
-
+# --------------- One-hot encoding ---------------
 new_train, new_test = transform_dataset(train[col4train], test[col4train], one_hot)
 # print(new_train.shape, new_test.shape)
 
 
 # Warning!!! Long run, better skip it.
-# validate_model(
-#     model = get_model(),
-#     data = [new_train, y]
-# )
+# validate_model(model = get_model(), data = [new_train, y])
 
+# # --------------- SVD ---------------
 new_train, new_test = transform_dataset(train[col4train], test[col4train], get_col_interactions_svd)
 
 # print(new_train.shape, new_test.shape)
@@ -170,16 +168,16 @@ new_train, new_test = transform_dataset(train[col4train], test[col4train], get_c
 validate_model(model=get_model(), data=[new_train.values, y])
 
 
+# --------------- Frequency encoding ---------------
 new_train, new_test = transform_dataset(train[col4train], test[col4train], get_freq_encoding)
 
 # print(new_train.shape, new_test.shape)
 # new_train.head(5)
 
-
 validate_model(model=get_model(), data=[new_train.values, y])
 
 
-# 변환값 결합
+# --------------- 변환값 결합(앙상블) ---------------
 new_train1, new_test1 = transform_dataset(
     train[col4train], test[col4train], get_freq_encoding
 )
