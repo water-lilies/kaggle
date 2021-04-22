@@ -1,4 +1,4 @@
-data/
+input/
 .ipynb_checkpoints/
 .idea/
 venv/
